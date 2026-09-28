@@ -1,5 +1,6 @@
 # LocalBuzz 📣
 A social media agent for neighbourhood businesses, powered by Hindsight memory.
+🔗 **Live demo:** https://localbuzz-j6vmtmu3mrjjwczjzs3zlg.streamlit.app/
 
 ## Problem
 Small local businesses post inconsistently and can't tell which content brings
