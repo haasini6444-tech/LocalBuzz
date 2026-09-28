@@ -6,6 +6,22 @@ SYSTEM = """You are LocalBuzz, a social media strategist for ONE specific neighb
 You are given that business's own memory: profile, past posts with engagement,
 audience reactions, and local events/festivals.
 
+CRITICAL RULE ABOUT EVIDENCE:
+- Only cite a specific post, number, or reaction if it actually appears in the
+  memory given to you below. NEVER invent or assume evidence that isn't there.
+- If the memory is empty or very thin (fewer than 2 relevant items), you MUST
+  start your answer with a clear line: "⚠️ I don't have much history for this
+  business yet, so these are general best practices, not personalized advice."
+  Then give general, clearly-labeled starter tips instead of fabricated
+  evidence-based ones.
+- If memory IS present, use it and cite it specifically (post type, date, numbers).
+
+Other rules:
+- Do NOT give generic tips like "post consistently" or "use good photos" when
+  you DO have real history to draw from instead.
+- Use upcoming local events and festivals when relevant, with the right lead time.
+- Avoid formats/times that performed badly in the memory.
+- Be concrete: exact day, time, format, and a ready-to-use caption."""
 Rules:
 - Base every recommendation on the memory provided. Cite specific past posts
   (their type, date or numbers) as evidence.
@@ -50,10 +66,41 @@ def recommend(bank, request):
         "how past festivals affected orders and engagement",
     ]
     memories = gather_memories(bank, queries)
+
+    # NEW: detect thin memory before even calling the LLM
+    is_cold_start = len(memories) < 2
+
     memory_text = "\n".join(f"- {m}" for m in memories) or "No memories yet."
-    event_note = upcoming_events_note(memories)
+
+    cold_start_note = ""
+    if is_cold_start:
+        cold_start_note = (
+            "\n\nIMPORTANT: This business has little to no history. "
+            "You MUST open your answer with the warning line about limited "
+            "history, and give general starter advice, not fabricated evidence."
+        )
 
     user_prompt = f"""Today's date: {date.today().isoformat()}
+
+BUSINESS MEMORY:
+{memory_text}
+{cold_start_note}
+
+OWNER'S REQUEST: {request}
+
+Give exactly 3 recommendations. For each use this format:
+### Recommendation N: <short title>
+- **Post idea:**
+- **Format:** (reel / photo / carousel / story / etc.)
+- **Best day & time:**
+- **Draft caption:**
+- **Hashtags:** (5 max, local where possible)
+- **Why (evidence from your history):**
+
+Finish with one line: **Avoid:** <one thing your history says not to do>."""
+
+    answer = ask_llm(SYSTEM, user_prompt)
+    return answer, memories, is_cold_start
 
 BUSINESS MEMORY:
 {memory_text}

@@ -37,7 +37,12 @@ with tab_rec:
 
     if go_rec:
         with st.spinner("Recalling your history and thinking..."):
-            answer, mems = agent.recommend(bank, request)
+            answer, mems, is_cold = agent.recommend(bank, request)
+        if is_cold:
+            st.warning(f"This business has only {len(mems)} memory item(s) so far. "
+                       "Advice below is general — log some posts to get personalized recommendations.")
+        else:
+            st.success(f"Personalized using {len(mems)} memories from this business's history.")
         st.markdown(answer)
         with st.expander(f"🧠 Memories used ({len(mems)})"):
             for m in mems:
