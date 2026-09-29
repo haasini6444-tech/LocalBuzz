@@ -36,19 +36,29 @@ def save_event(bank, name, date, notes):
                   context="local festival or event", timestamp=f"{date}T09:00:00Z")
 
 # ---------- RECALL ----------
+import time
+
 def gather_memories(bank, queries):
-    """Run several searches and merge the unique results."""
+    """Run several searches and merge the unique results, with retry on failure."""
     seen, out = set(), []
     for q in queries:
-        try:
-            res = memory.recall(bank_id=bank, query=q)
-            print(f"[recall] bank={bank} query='{q}' -> {len(res.results)} results")
-            for r in res.results:
-                if r.text not in seen:
-                    seen.add(r.text)
-                    out.append(r.text)
-        except Exception as e:
-            print(f"[recall error] bank={bank} query='{q}' -> {e}")
+        success = False
+        for attempt in range(3):
+            try:
+                res = memory.recall(bank_id=bank, query=q)
+                print(f"[recall OK] bank={bank} query='{q}' -> {len(res.results)} results")
+                for r in res.results:
+                    if r.text not in seen:
+                        seen.add(r.text)
+                        out.append(r.text)
+                success = True
+                break
+            except Exception as e:
+                print(f"[recall FAIL attempt {attempt+1}] bank={bank} query='{q}' -> {e}")
+                time.sleep(1.5)
+        if not success:
+            print(f"[recall GAVE UP] bank={bank} query='{q}'")
+        time.sleep(0.3)  # small gap between queries to avoid bursting the rate limit
     return out
 
 def reflect_insights(bank):
