@@ -1,4 +1,5 @@
-from datetime import date
+import re
+from datetime import date, datetime
 from core import ask_llm
 from memory_ops import gather_memories
 
@@ -10,7 +11,7 @@ CRITICAL RULE ABOUT EVIDENCE:
 - Only cite a specific post, number, or reaction if it actually appears in the
   memory given to you below. NEVER invent or assume evidence that isn't there.
 - If the memory is empty or very thin (fewer than 2 relevant items), you MUST
-  start your answer with a clear line: "⚠️ I don't have much history for this
+  start your answer with a clear line: "I don't have much history for this
   business yet, so these are general best practices, not personalized advice."
   Then give general, clearly-labeled starter tips instead of fabricated
   evidence-based ones.
@@ -20,25 +21,11 @@ Other rules:
 - Do NOT give generic tips like "post consistently" or "use good photos" when
   you DO have real history to draw from instead.
 - Use upcoming local events and festivals when relevant, with the right lead time.
-- Avoid formats/times that performed badly in the memory.
+- Avoid formats or times that performed badly in the memory.
 - Be concrete: exact day, time, format, and a ready-to-use caption."""
-Rules:
-- Base every recommendation on the memory provided. Cite specific past posts
-  (their type, date or numbers) as evidence.
-- Do NOT give generic tips like "post consistently" or "use good photos".
-- Use upcoming local events and festivals when relevant, with the right lead time.
-- Avoid formats/times that performed badly in the memory.
-- If memory is thin, say so and label those parts as assumptions.
-- Be concrete: exact day, time, format, and a ready-to-use caption.
-- For every upcoming event or festival, say how many days from today it is,
-  and recommend a start date for teaser posts based on what worked last time.
-- Prefer preview/teaser posts before an event over greeting posts on the event day
-  if the memory shows greetings underperformed."""
-import re
-from datetime import datetime
+
 
 def upcoming_events_note(memories):
-    """Find 'Local event' memories with dates and compute days remaining."""
     notes = []
     for m in memories:
         if "event" not in m.lower() and "festival" not in m.lower():
@@ -49,10 +36,11 @@ def upcoming_events_note(memories):
                 d = datetime.strptime(match.group(1), "%Y-%m-%d").date()
                 days = (d - date.today()).days
                 if days >= 0:
-                    notes.append(f"- {m[:120]}... => happens in {days} days")
+                    notes.append(f"- {m[:120]}... happens in {days} days")
             except ValueError:
                 pass
-    return "\n".join(notes) or "No dated upcoming events found."
+    return "\n".join(notes) if notes else "No dated upcoming events found."
+
 
 def recommend(bank, request):
     queries = [
@@ -66,11 +54,9 @@ def recommend(bank, request):
         "how past festivals affected orders and engagement",
     ]
     memories = gather_memories(bank, queries)
-
-    # NEW: detect thin memory before even calling the LLM
     is_cold_start = len(memories) < 2
-
-    memory_text = "\n".join(f"- {m}" for m in memories) or "No memories yet."
+    memory_text = "\n".join(f"- {m}" for m in memories) if memories else "No memories yet."
+    event_note = upcoming_events_note(memories)
 
     cold_start_note = ""
     if is_cold_start:
@@ -80,45 +66,28 @@ def recommend(bank, request):
             "history, and give general starter advice, not fabricated evidence."
         )
 
-    user_prompt = f"""Today's date: {date.today().isoformat()}
-
-BUSINESS MEMORY:
-{memory_text}
-{cold_start_note}
-
-OWNER'S REQUEST: {request}
-
-Give exactly 3 recommendations. For each use this format:
-### Recommendation N: <short title>
-- **Post idea:**
-- **Format:** (reel / photo / carousel / story / etc.)
-- **Best day & time:**
-- **Draft caption:**
-- **Hashtags:** (5 max, local where possible)
-- **Why (evidence from your history):**
-
-Finish with one line: **Avoid:** <one thing your history says not to do>."""
+    user_prompt = (
+        f"Today's date: {date.today().isoformat()}\n\n"
+        f"BUSINESS MEMORY:\n{memory_text}\n\n"
+        f"DAYS UNTIL EVENTS (computed, trust these numbers):\n{event_note}\n"
+        f"{cold_start_note}\n\n"
+        f"OWNER'S REQUEST: {request}\n\n"
+        "Give exactly 3 recommendations. For each use this format:\n"
+        "### Recommendation N: <short title>\n"
+        "- Post idea:\n"
+        "- Format: (reel / photo / carousel / story / etc.)\n"
+        "- Best day and time:\n"
+        "- Draft caption:\n"
+        "- Hashtags: (5 max, local where possible)\n"
+        "- Why (evidence from your history):\n\n"
+        "Finish with one line: Avoid: <one thing your history says not to do>."
+    )
 
     answer = ask_llm(SYSTEM, user_prompt)
     return answer, memories, is_cold_start
 
-BUSINESS MEMORY:
-{memory_text}
 
-OWNER'S REQUEST: {request}
-
-Give exactly 3 recommendations. For each use this format:
-### Recommendation N: <short title>
-- **Post idea:**
-- **Format:** (reel / photo / carousel / story / etc.)
-- **Best day & time:**
-- **Draft caption:**
-- **Hashtags:** (5 max, local where possible)
-- **Why (evidence from your history):**
-
-Finish with one line: **Avoid:** <one thing your history says not to do>."""
-    return ask_llm(SYSTEM, user_prompt), memories
-def weekly_plan(bank,event_note):
+def weekly_plan(bank):
     queries = [
         "business profile, audience and location",
         "posts with the highest engagement and why they worked",
@@ -127,22 +96,18 @@ def weekly_plan(bank,event_note):
         "upcoming local festivals and events",
     ]
     memories = gather_memories(bank, queries)
-    memory_text = "\n".join(f"- {m}" for m in memories) or "No memories yet."
+    memory_text = "\n".join(f"- {m}" for m in memories) if memories else "No memories yet."
 
-    user_prompt = f"""Today's date: {date.today().isoformat()}
-    DAYS UNTIL EVENTS (computed, trust these numbers):
-    {event_note}
-
-BUSINESS MEMORY:
-{memory_text}
-
-Create a 7-day posting calendar starting tomorrow.
-Output a markdown table with these columns:
-| Day | Time | Platform | Format | Post idea | Why (evidence from history) |
-
-Rules:
-- Use the best-performing formats and times from the memory.
-- Skip or lighten days where history shows low engagement.
-- If an event is within 14 days, include prep posts for it.
-- Max 5 posting days; rest days are fine (label them "Rest")."""
+    user_prompt = (
+        f"Today's date: {date.today().isoformat()}\n\n"
+        f"BUSINESS MEMORY:\n{memory_text}\n\n"
+        "Create a 7-day posting calendar starting tomorrow.\n"
+        "Output a markdown table with these columns:\n"
+        "| Day | Time | Platform | Format | Post idea | Why (evidence from history) |\n\n"
+        "Rules:\n"
+        "- Use the best-performing formats and times from the memory.\n"
+        "- Skip or lighten days where history shows low engagement.\n"
+        "- If an event is within 14 days, include prep posts for it.\n"
+        "- Max 5 posting days; rest days are fine (label them Rest)."
+    )
     return ask_llm(SYSTEM, user_prompt), memories
