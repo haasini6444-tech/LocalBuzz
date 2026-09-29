@@ -1,6 +1,6 @@
 import re
 from datetime import date, datetime
-from core import ask_llm
+from core import ask_llm, memory
 from memory_ops import gather_memories
 
 SYSTEM = """You are LocalBuzz, a social media strategist for ONE specific neighbourhood business.
@@ -111,3 +111,23 @@ def weekly_plan(bank):
         "- Max 5 posting days; rest days are fine (label them Rest)."
     )
     return ask_llm(SYSTEM, user_prompt), memories
+
+
+def proactive_nudge(bank):
+    try:
+        insight = memory.reflect(
+            bank_id=bank,
+            query=(
+                "Looking at all posts, engagement, audience reactions and "
+                "timing patterns, what is the single most useful, specific, "
+                "non-obvious pattern this business owner should know right now? "
+                "If there is an upcoming festival or event, factor it in. "
+                "Answer in ONE short sentence, like a helpful nudge, starting "
+                "with an emoji. If there isn't enough history for a real "
+                "pattern, say so honestly in one sentence instead."
+            ),
+        )
+        return insight.text.strip()
+    except Exception as e:
+        print(f"[nudge error] {e}")
+        return None

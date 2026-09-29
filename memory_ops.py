@@ -42,12 +42,13 @@ def gather_memories(bank, queries):
     for q in queries:
         try:
             res = memory.recall(bank_id=bank, query=q)
+            print(f"[recall] bank={bank} query='{q}' -> {len(res.results)} results")
             for r in res.results:
                 if r.text not in seen:
                     seen.add(r.text)
                     out.append(r.text)
         except Exception as e:
-            print(f"[recall error] {e}")
+            print(f"[recall error] bank={bank} query='{q}' -> {e}")
     return out
 
 def reflect_insights(bank):

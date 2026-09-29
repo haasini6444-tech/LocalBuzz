@@ -28,6 +28,11 @@ tab_rec, tab_post, tab_event, tab_profile, tab_insights = st.tabs(
 
 # ---- Recommendations ----
 with tab_rec:
+    with st.spinner("Checking for patterns..."):
+        nudge = agent.proactive_nudge(bank)
+    if nudge:
+        st.info(f"**LocalBuzz noticed:** {nudge}")
+
     request = st.text_input("What do you need?", "What should I post this week?")
     st.caption("Try: 'Plan for the next festival' · 'Why did my Sunday post flop?' · "
                "'What should I post about a new product?'")
@@ -43,10 +48,6 @@ with tab_rec:
                        "Advice below is general — log some posts to get personalized recommendations.")
         else:
             st.success(f"Personalized using {len(mems)} memories from this business's history.")
-        if is_cold:
-            st.warning(f"This business has only {len(mems)} memory item(s) so far. Advice below is general.")
-        else:
-            st.success(f"Personalized using {len(mems)} memories from this business's history.")
         st.markdown(answer)
         with st.expander(f"🧠 Memories used ({len(mems)})"):
             for m in mems:
@@ -54,8 +55,7 @@ with tab_rec:
 
     if go_plan:
         with st.spinner("Planning your week from your history..."):
-            event_note = st.text_area("Event note", "")
-            answer, mems = agent.weekly_plan(bank, event_note)
+            answer, mems = agent.weekly_plan(bank)
         st.markdown(answer)
         with st.expander(f"🧠 Memories used ({len(mems)})"):
             for m in mems:
