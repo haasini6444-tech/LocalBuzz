@@ -1,6 +1,6 @@
 import re
 from datetime import date, datetime
-from core import ask_llm, memory
+from core import ask_llm, get_memory_client
 from memory_ops import gather_memories
 
 SYSTEM = """You are LocalBuzz, a social media strategist for ONE specific neighbourhood business.
@@ -114,6 +114,7 @@ def weekly_plan(bank):
 
 
 def proactive_nudge(bank):
+    memory = get_memory_client()
     try:
         insight = memory.reflect(
             bank_id=bank,

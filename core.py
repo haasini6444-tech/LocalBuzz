@@ -8,10 +8,12 @@ load_dotenv()
 MODELS = ["openai/gpt-oss-120b", "qwen/qwen3-32b"]  # main model, then backup
 
 llm = Groq(api_key=os.environ["GROQ_API_KEY"])
-memory = Hindsight(
-    base_url=os.environ["HINDSIGHT_URL"],
-    api_key=os.environ["HINDSIGHT_API_KEY"],
-)
+def get_memory_client():
+    """Create a fresh client each time, to avoid cross-thread reuse issues on Streamlit Cloud."""
+    return Hindsight(
+        base_url=os.environ["HINDSIGHT_URL"],
+        api_key=os.environ["HINDSIGHT_API_KEY"],
+    )
 
 def ask_llm(system_prompt, user_prompt, retries=3):
     """Call Groq; retry, then fall back to the second model on errors."""

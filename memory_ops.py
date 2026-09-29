@@ -1,5 +1,5 @@
 import os, re, json
-from core import memory
+from core import get_memory_client
 
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -22,6 +22,10 @@ def save_post(bank, date, time, platform, post_type, caption,
         f"Results: {likes} likes, {comments} comments, {shares} shares, reach {reach}. "
         f"Audience reaction: {reaction}"
     )
+    def save_profile(bank, name, biz_type, location, audience, platforms):
+    memory = get_memory_client()
+    content = (...)
+    memory.retain(...)
     memory.retain(bank_id=bank, content=content,
                   context="post performance and audience reaction",
                   timestamp=f"{date}T{time}:00Z")
@@ -32,6 +36,10 @@ def save_post(bank, date, time, platform, post_type, caption,
 
 def save_event(bank, name, date, notes):
     content = f"Local event or festival: {name} on {date}. {notes}"
+    def save_profile(bank, name, biz_type, location, audience, platforms):
+    memory = get_memory_client()
+    content = (...)
+    memory.retain(...)
     memory.retain(bank_id=bank, content=content,
                   context="local festival or event", timestamp=f"{date}T09:00:00Z")
 
@@ -45,6 +53,10 @@ def gather_memories(bank, queries):
         success = False
         for attempt in range(3):
             try:
+                def save_profile(bank, name, biz_type, location, audience, platforms):
+                  memory = get_memory_client()
+                content = (...)
+                memory.retain(...)
                 res = memory.recall(bank_id=bank, query=q)
                 print(f"[recall OK] bank={bank} query='{q}' -> {len(res.results)} results")
                 for r in res.results:
